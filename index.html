@@ -69,16 +69,14 @@
 
     <script>
         const wallets = [
-            { name: 'MetaMask', img: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png', link: 'https://metamask.io/' },
-            { name: 'Trust Wallet', img: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/binance/info/logo.png', link: 'https://trustwallet.com/' },
+            { name: 'MetaMask', img: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png', link: 'metamask://dapp' },
+            { name: 'Trust Wallet', img: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/binance/info/logo.png', link: 'trust://walletconnect' },
         ];
 
         const walletsContainer = document.getElementById('wallets');
         wallets.forEach(wallet => {
             const link = document.createElement('a');
             link.href = wallet.link;
-            link.target = "_blank";
-            link.rel = "noopener noreferrer";
             link.classList.add('wallet');
             link.innerHTML = `
                 <img src="${wallet.img}" alt="${wallet.name}" loading="lazy">
@@ -87,17 +85,7 @@
             walletsContainer.appendChild(link);
         });
 
-        // Load WalletConnect and QRCode scripts dynamically
-        function loadScript(src) {
-            return new Promise((resolve, reject) => {
-                const script = document.createElement('script');
-                script.src = src;
-                script.onload = resolve;
-                script.onerror = reject;
-                document.body.appendChild(script);
-            });
-        }
-
+        // WalletConnect and QRCode logic remains the same
         async function initWalletConnect() {
             try {
                 await loadScript('https://unpkg.com/@walletconnect/client@1.8.0/dist/umd/index.min.js');
@@ -140,6 +128,17 @@
             qrcodeCanvas.style.display = 'block';
             QRCode.toCanvas(qrcodeCanvas, uri, { width: 256 }, (error) => {
                 if (error) console.error('Error generating QR code:', error);
+            });
+        }
+
+        // Dynamically load external scripts
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.body.appendChild(script);
             });
         }
 
