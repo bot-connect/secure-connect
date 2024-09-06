@@ -6,52 +6,79 @@
     <title>Connect Your Crypto Wallet</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
-        /* ... (previous styles remain the same) ... */
-        #qrcode-container {
-            display: none;
-            margin-top: 2rem;
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        #wallets {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 2rem;
+        }
+        .wallet {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: #ffffff;
             text-align: center;
+        }
+        .wallet:hover {
+            transform: translateY(-5px);
+        }
+        .wallet img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin-bottom: 1rem;
+        }
+        .wallet-name {
+            font-weight: 600;
+            font-size: 1.1rem;
         }
         #qrcode {
-            margin: 1rem auto;
-        }
-        .button {
-            background-color: #4CAF50;
-            border: none;
-            color: white;
-            padding: 15px 32px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            margin: 4px 2px;
-            cursor: pointer;
-            border-radius: 8px;
+            margin-top: 2rem;
+            width: 256px;
+            height: 256px;
+            display: none;
         }
     </style>
 </head>
 <body>
     <h1>Select Your Crypto Wallet</h1>
     <div id="wallets"></div>
-    <div id="qrcode-container">
-        <h2>Scan QR Code</h2>
-        <canvas id="qrcode"></canvas>
-        <button id="close-qr" class="button">Close QR Code</button>
-    </div>
+    <canvas id="qrcode"></canvas>
 
-    <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.7.1/dist/umd/index.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
+    <script src="https://unpkg.com/@walletconnect/client@1.8.0/dist/umd/index.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script>
     <script>
         const wallets = [
-            { name: 'MetaMask', img: 'https://metamask.io/images/metamask-fox.svg', link: 'https://metamask.app.link/dapp/' },
-            { name: 'Trust Wallet', img: 'https://trustwallet.com/assets/images/favicon.png', link: 'https://link.trustwallet.com/' },
+            { name: 'MetaMask', img: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png', link: 'metamask://dapp/' },
+            { name: 'Trust Wallet', img: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/binance/info/logo.png', link: 'https://link.trustwallet.com/open_url?coin_id=60&url=' },
         ];
 
         const walletsContainer = document.getElementById('wallets');
         wallets.forEach(wallet => {
             const link = document.createElement('a');
-            link.href = '#';
+            link.href = wallet.link;
             link.classList.add('wallet');
             link.innerHTML = `
                 <img src="${wallet.img}" alt="${wallet.name}" loading="lazy">
@@ -64,57 +91,56 @@
             walletsContainer.appendChild(link);
         });
 
-        let provider;
-
         async function initWalletConnect(walletLink) {
-            provider = new WalletConnectProvider.default({
-                rpc: {
-                    1: "https://mainnet.infura.io/v3/f02e2d49abf14233959146d0a971f556",
-                    // Add other network RPC URLs as needed
+            const connector = new WalletConnect({
+                bridge: "https://bridge.walletconnect.org",
+                qrcodeModal: {
+                    open: (uri) => {
+                        showQRCode(uri);
+                    },
+                    close: () => {
+                        document.getElementById('qrcode').style.display = 'none';
+                    }
                 },
+                infuraId: "https://mainnet.infura.io/v3/f02e2d49abf14233959146d0a971f556" // Add your Infura ID here
             });
 
-            try {
-                await provider.enable();
-                const web3 = new Web3(provider);
-                const accounts = await web3.eth.getAccounts();
-                const chainId = await web3.eth.getChainId();
-                console.log(`Connected: ${accounts[0]} on chain ${chainId}`);
-                alert(`Connected: ${accounts[0]} on chain ${chainId}`);
+            if (!connector.connected) {
+                await connector.createSession();
 
-                // Redirect to wallet app for mobile deep linking
+                // Attempt to open the wallet app on mobile
                 if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
                     window.location.href = `${walletLink}${encodeURIComponent(window.location.href)}`;
-                } else {
-                    // Show QR code for desktop
-                    showQRCode(provider.connector.uri);
-                }
-
-                provider.on("disconnect", (code, reason) => {
-                    console.log(code, reason);
-                    alert("Wallet disconnected");
-                });
-            } catch (error) {
-                console.error("Failed to connect wallet:", error);
-                // If direct connection fails, show QR code as fallback
-                if (provider.connector && provider.connector.uri) {
-                    showQRCode(provider.connector.uri);
                 }
             }
+
+            connector.on("connect", (error, payload) => {
+                if (error) {
+                    console.error('Error connecting WalletConnect:', error);
+                    return;
+                }
+                const { accounts, chainId } = payload.params[0];
+                console.log(`Connected: ${accounts[0]} on chain ${chainId}`);
+                alert(`Connected: ${accounts[0]} on chain ${chainId}`);
+                document.getElementById('qrcode').style.display = 'none';
+            });
+
+            connector.on("disconnect", (error, payload) => {
+                if (error) {
+                    console.error('Error disconnecting WalletConnect:', error);
+                } else {
+                    console.log('Disconnected');
+                }
+            });
         }
 
         function showQRCode(uri) {
-            const qrcodeContainer = document.getElementById('qrcode-container');
             const qrcodeCanvas = document.getElementById('qrcode');
-            qrcodeContainer.style.display = 'block';
+            qrcodeCanvas.style.display = 'block';
             QRCode.toCanvas(qrcodeCanvas, uri, { width: 256 }, (error) => {
                 if (error) console.error('Error generating QR code:', error);
             });
         }
-
-        document.getElementById('close-qr').addEventListener('click', () => {
-            document.getElementById('qrcode-container').style.display = 'none';
-        });
     </script>
 </body>
 </html>
