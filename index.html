@@ -56,13 +56,18 @@
             font-weight: 600;
             font-size: 1.1rem;
         }
+        #qrcode {
+            margin-top: 2rem;
+        }
     </style>
 </head>
 <body>
     <h1>Select Your Crypto Wallet</h1>
     <div id="wallets"></div>
+    <div id="qrcode"></div>
 
     <script src="https://unpkg.com/@walletconnect/client/dist/umd/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script>
     <script>
         const wallets = [
             { name: 'MetaMask', img: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png' },
@@ -98,10 +103,13 @@
             // Check if connection already exists
             if (!wc.connected) {
                 wc.createSession().then(() => {
-                    // Generate QR Code for connection
                     const uri = wc.uri;
-                    // Show the QR code (you can use a library like QRCode.js to generate the QR)
-                    alert(`Scan this QR code with ${walletName}: ${uri}`);
+
+                    // Generate and display QR code
+                    QRCode.toCanvas(document.getElementById('qrcode'), uri, (error) => {
+                        if (error) console.error(error);
+                        console.log('QR Code generated');
+                    });
                 });
             }
 
