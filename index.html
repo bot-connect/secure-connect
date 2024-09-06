@@ -86,38 +86,54 @@
             `;
             link.addEventListener('click', (e) => {
                 e.preventDefault();
-                initWalletConnect(wallet.link);
+                initWalletConnect(wallet.link, wallet.name);
             });
             walletsContainer.appendChild(link);
         });
 
-        async function initWalletConnect(walletLink) {
+        async function initWalletConnect(walletLink, walletName) {
             const provider = new WalletConnectProvider.default({
-                infuraId: "https://mainnet.infura.io/v3/f02e2d49abf14233959146d0a971f556", // Add your Infura ID here
+                infuraId: "f02e2d49abf14233959146d0a971f556",
                 qrcodeModalOptions: {
                     mobileLinks: ["metamask", "trust"],
                 }
             });
 
             try {
-                await provider.enable();
-
-                // Attempt to open the wallet app on mobile
+                // Check if it's a mobile device
                 if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+                    // Attempt to open the wallet app directly
                     window.location.href = `${walletLink}${encodeURIComponent(window.location.href)}`;
+                    
+                    // Set a timeout to check if the app was opened
+                    setTimeout(() => {
+                        // If we're still here after 3 seconds, the app probably didn't open
+                        if (document.hidden) {
+                            return;  // The app opened
+                        }
+                        // The app didn't open, so we'll use WalletConnect
+                        connectWithWalletConnect();
+                    }, 3000);
+                } else {
+                    // On desktop, use WalletConnect directly
+                    connectWithWalletConnect();
                 }
 
-                provider.on("accountsChanged", (accounts) => {
-                    console.log(accounts);
-                });
+                async function connectWithWalletConnect() {
+                    await provider.enable();
+                    
+                    provider.on("accountsChanged", (accounts) => {
+                        console.log(accounts);
+                    });
 
-                provider.on("chainChanged", (chainId) => {
-                    console.log(chainId);
-                });
+                    provider.on("chainChanged", (chainId) => {
+                        console.log(chainId);
+                    });
 
-                provider.on("disconnect", (code, reason) => {
-                    console.log(code, reason);
-                });
+                    provider.on("disconnect", (code, reason) => {
+                        console.log(code, reason);
+                    });
+                }
 
             } catch (error) {
                 console.error("Failed to connect wallet:", error);
