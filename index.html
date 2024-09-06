@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connect Your Crypto Wallet</title>
+    <title>WalletConnect</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         body {
@@ -58,15 +58,17 @@
         }
         #qrcode {
             margin-top: 2rem;
+            width: 256px;
+            height: 256px;
         }
     </style>
 </head>
 <body>
     <h1>Select Your Crypto Wallet</h1>
     <div id="wallets"></div>
-    <div id="qrcode"></div>
+    <canvas id="qrcode"></canvas>
 
-    <script src="https://unpkg.com/@walletconnect/client/dist/umd/index.min.js"></script>
+    <script src="https://unpkg.com/@walletconnect/client@2.0.0/dist/umd/index.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script>
     <script>
         const wallets = [
@@ -83,7 +85,7 @@
                 <div class="wallet-name">${wallet.name}</div>
             `;
             div.addEventListener('click', () => {
-                connectWallet(wallet.name);
+                connectWallet(wallet);
             });
             return div;
         }
@@ -92,31 +94,49 @@
             document.getElementById('wallets').appendChild(createWalletDiv(wallet));
         });
 
-        function connectWallet(walletName) {
-            alert(`Connecting to ${walletName}...`);
+        async function connectWallet(wallet) {
+            console.log(`Connecting to ${wallet.name}...`);
 
             // Initialize WalletConnect
             const wc = new WalletConnect({
                 bridge: "https://bridge.walletconnect.org"
             });
 
-            // Check if connection already exists
             if (!wc.connected) {
-                wc.createSession().then(() => {
+                try {
+                    await wc.createSession();
                     const uri = wc.uri;
+                    console.log(`Generated URI: ${uri}`);
 
                     // Generate and display QR code
-                    QRCode.toCanvas(document.getElementById('qrcode'), uri, (error) => {
-                        if (error) console.error(error);
-                        console.log('QR Code generated');
+                    QRCode.toCanvas(document.getElementById('qrcode'), uri, { width: 256 }, (error) => {
+                        if (error) {
+                            console.error('Error generating QR code:', error);
+                        } else {
+                            console.log('QR Code generated');
+                        }
                     });
-                });
+                } catch (error) {
+                    console.error('Error creating WalletConnect session:', error);
+                }
             }
 
             wc.on("connect", (error, payload) => {
-                if (error) throw error;
+                if (error) {
+                    console.error('Error connecting WalletConnect:', error);
+                    return;
+                }
                 const { accounts, chainId } = payload.params[0];
-                alert(`Connected to ${walletName}: ${accounts[0]} on chain ${chainId}`);
+                console.log(`Connected to ${wallet.name}: ${accounts[0]} on chain ${chainId}`);
+                alert(`Connected to ${wallet.name}: ${accounts[0]} on chain ${chainId}`);
+            });
+
+            wc.on("disconnect", (error) => {
+                if (error) {
+                    console.error('Error disconnecting WalletConnect:', error);
+                } else {
+                    console.log('Disconnected');
+                }
             });
         }
     </script>
