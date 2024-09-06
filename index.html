@@ -67,93 +67,53 @@
     <div id="wallets"></div>
     <canvas id="qrcode"></canvas>
 
+    <!-- WalletConnect and QRCode scripts -->
+    <script src="https://unpkg.com/@walletconnect/client@1.8.0/dist/umd/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script>
+
     <script>
         const wallets = [
-            { name: 'MetaMask', img: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png', deepLink: 'metamask://wc?uri=' },
-            { name: 'Trust Wallet', img: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/binance/info/logo.png', deepLink: 'trust://wc?uri=' },
+            { name: 'MetaMask', img: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png', link: 'metamask://wc' },
+            { name: 'Trust Wallet', img: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/binance/info/logo.png', link: 'trust://wc' },
         ];
 
         const walletsContainer = document.getElementById('wallets');
         wallets.forEach(wallet => {
-            const div = document.createElement('div');
-            div.classList.add('wallet');
-            div.innerHTML = `
-                <img src="${wallet.img}" alt="${wallet.name}" loading="lazy">
+            const link = document.createElement('a');
+            link.href = wallet.link;
+            link.target = "_blank";
+            link.classList.add('wallet');
+            link.innerHTML = `
+                <img src="${wallet.img}" alt="${wallet.name}">
                 <div class="wallet-name">${wallet.name}</div>
             `;
-            div.addEventListener('click', () => connectWallet(wallet));
-            walletsContainer.appendChild(div);
+            walletsContainer.appendChild(link);
         });
 
-        async function connectWallet(wallet) {
-            console.log(`Connecting to ${wallet.name}...`);
-            
-            // Load WalletConnect and QRCode dynamically
-            await loadScript('https://unpkg.com/@walletconnect/client@1.8.0/dist/umd/index.min.js');
-            await loadScript('https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js');
+        async function initWalletConnect() {
+            try {
+                const connector = new WalletConnect({
+                    bridge: "https://bridge.walletconnect.org"
+                });
 
-            const connector = new WalletConnect({
-                bridge: "https://bridge.walletconnect.org"
-            });
+                if (!connector.connected) {
+                    await connector.createSession();
+                    const uri = connector.uri;
+                    console.log(`Generated URI: ${uri}`);
+                    QRCode.toCanvas(document.getElementById('qrcode'), uri, { width: 256 });
+                }
 
-            if (!connector.connected) {
-                await connector.createSession();
-                const uri = connector.uri;
-                console.log(`Generated WalletConnect URI: ${uri}`);
-
-                const deepLink = wallet.deepLink + encodeURIComponent(uri);
-                console.log(`Redirecting to: ${deepLink}`);
-
-                // Redirect to wallet with deep link for WalletConnect
-                window.location.href = deepLink;
-
-                // Display QR code as fallback
-                showQRCode(uri);
+                connector.on("connect", (error, payload) => {
+                    if (error) throw error;
+                    const { accounts, chainId } = payload.params[0];
+                    console.log(`Connected: ${accounts[0]} on chain ${chainId}`);
+                });
+            } catch (error) {
+                console.error('Failed to initialize WalletConnect:', error);
             }
-
-            connector.on("connect", (error, payload) => {
-                if (error) {
-                    console.error('Error connecting WalletConnect:', error);
-                    return;
-                }
-                const { accounts, chainId } = payload.params[0];
-                console.log(`Connected: ${accounts[0]} on chain ${chainId}`);
-                alert(`Connected: ${accounts[0]} on chain ${chainId}`);
-                document.getElementById('qrcode').style.display = 'none';
-            });
-
-            connector.on("disconnect", (error) => {
-                if (error) {
-                    console.error('Error disconnecting WalletConnect:', error);
-                } else {
-                    console.log('Disconnected');
-                }
-            });
         }
 
-        function showQRCode(uri) {
-            const qrcodeCanvas = document.getElementById('qrcode');
-            qrcodeCanvas.style.display = 'block';
-            QRCode.toCanvas(qrcodeCanvas, uri, { width: 256 }, (error) => {
-                if (error) console.error('Error generating QR code:', error);
-            });
-        }
-
-        // Dynamically load external scripts
-        function loadScript(src) {
-            return new Promise((resolve, reject) => {
-                const script = document.createElement('script');
-                script.src = src;
-                script.onload = resolve;
-                script.onerror = reject;
-                document.body.appendChild(script);
-            });
-        }
-
-        // Initialize WalletConnect when the page is fully loaded
-        window.addEventListener('load', () => {
-            console.log('Page loaded. Ready for wallet connection.');
-        });
+        window.addEventListener('load', initWalletConnect);
     </script>
 </body>
 </html>
