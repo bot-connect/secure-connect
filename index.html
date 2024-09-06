@@ -67,59 +67,63 @@
     <div id="wallets"></div>
     <canvas id="qrcode"></canvas>
 
-    <!-- WalletConnect and QRCode scripts -->
-    <script src="https://unpkg.com/@walletconnect/client@1.8.0/dist/umd/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.7.1/dist/umd/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script>
-
     <script>
         const wallets = [
-            { name: 'MetaMask', img: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png', deepLink: 'metamask://wc' },
-            { name: 'Trust Wallet', img: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/binance/info/logo.png', deepLink: 'trust://wc' }
+            { name: 'MetaMask', img: 'https://metamask.io/images/metamask-fox.svg', link: 'https://metamask.app.link/dapp/' },
+            { name: 'Trust Wallet', img: 'https://trustwallet.com/assets/images/favicon.png', link: 'https://link.trustwallet.com/' },
         ];
 
         const walletsContainer = document.getElementById('wallets');
         wallets.forEach(wallet => {
-            const div = document.createElement('div');
-            div.classList.add('wallet');
-            div.innerHTML = `
-                <img src="${wallet.img}" alt="${wallet.name}">
+            const link = document.createElement('a');
+            link.href = '#';
+            link.classList.add('wallet');
+            link.innerHTML = `
+                <img src="${wallet.img}" alt="${wallet.name}" loading="lazy">
                 <div class="wallet-name">${wallet.name}</div>
             `;
-            div.addEventListener('click', () => connectWallet(wallet.deepLink));
-            walletsContainer.appendChild(div);
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                initWalletConnect(wallet.link);
+            });
+            walletsContainer.appendChild(link);
         });
 
-        async function connectWallet(deepLink) {
+        async function initWalletConnect(walletLink) {
+            const provider = new WalletConnectProvider.default({
+                rpc: {
+                    1: "https://mainnet.infura.io/v3/f02e2d49abf14233959146d0a971f556",
+                    // Add other network RPC URLs as needed
+                },
+            });
+
             try {
-                // Ensure WalletConnect is properly initialized
-                if (typeof WalletConnect !== 'function') {
-                    throw new Error("WalletConnect is not loaded correctly.");
+                await provider.enable();
+                const web3 = new Web3(provider);
+                const accounts = await web3.eth.getAccounts();
+                const chainId = await web3.eth.getChainId();
+                console.log(`Connected: ${accounts[0]} on chain ${chainId}`);
+                alert(`Connected: ${accounts[0]} on chain ${chainId}`);
+
+                // Show QR code for mobile wallets
+                if (provider.connector && provider.connector.uri) {
+                    showQRCode(provider.connector.uri);
                 }
 
-                const connector = new WalletConnect({
-                    bridge: "https://bridge.walletconnect.org"
-                });
-
-                if (!connector.connected) {
-                    await connector.createSession();
-                    const uri = connector.uri;
-                    const fullDeepLink = `${deepLink}?uri=${encodeURIComponent(uri)}`;
-                    console.log(`Deep Link: ${fullDeepLink}`);
-                    
-                    // Attempt to open wallet app via deep link
-                    window.location.href = fullDeepLink;
-
-                    // Display QR code as a fallback
-                    showQRCode(uri);
+                // Redirect to wallet app for mobile deep linking
+                if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+                    window.location.href = `${walletLink}${encodeURIComponent(window.location.href)}`;
                 }
 
-                connector.on("connect", (error, payload) => {
-                    if (error) throw error;
-                    const { accounts, chainId } = payload.params[0];
-                    console.log(`Connected: ${accounts[0]} on chain ${chainId}`);
+                provider.on("disconnect", (code, reason) => {
+                    console.log(code, reason);
+                    alert("Wallet disconnected");
                 });
             } catch (error) {
-                console.error('Failed to connect wallet:', error);
+                console.error("Failed to connect wallet:", error);
             }
         }
 
