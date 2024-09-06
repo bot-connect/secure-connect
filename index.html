@@ -69,58 +69,73 @@
 
     <script>
         const wallets = [
-            { name: 'MetaMask', img: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png', link: 'metamask://dapp' },
-            { name: 'Trust Wallet', img: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/binance/info/logo.png', link: 'trust://walletconnect' },
+            { name: 'MetaMask', img: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png' },
+            { name: 'Trust Wallet', img: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/binance/info/logo.png' },
         ];
 
         const walletsContainer = document.getElementById('wallets');
         wallets.forEach(wallet => {
-            const link = document.createElement('a');
-            link.href = wallet.link;
-            link.classList.add('wallet');
-            link.innerHTML = `
+            const div = document.createElement('div');
+            div.classList.add('wallet');
+            div.innerHTML = `
                 <img src="${wallet.img}" alt="${wallet.name}" loading="lazy">
                 <div class="wallet-name">${wallet.name}</div>
             `;
-            walletsContainer.appendChild(link);
+            div.addEventListener('click', () => connectWallet(wallet.name));
+            walletsContainer.appendChild(div);
         });
 
-        // WalletConnect and QRCode logic remains the same
-        async function initWalletConnect() {
-            try {
-                await loadScript('https://unpkg.com/@walletconnect/client@1.8.0/dist/umd/index.min.js');
-                await loadScript('https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js');
+        async function connectWallet(walletName) {
+            console.log(`Connecting to ${walletName}...`);
+            
+            // Load WalletConnect and QRCode dynamically
+            await loadScript('https://unpkg.com/@walletconnect/client@1.8.0/dist/umd/index.min.js');
+            await loadScript('https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js');
 
-                const connector = new WalletConnect({
-                    bridge: "https://bridge.walletconnect.org"
-                });
+            const connector = new WalletConnect({
+                bridge: "https://bridge.walletconnect.org"
+            });
 
-                if (!connector.connected) {
-                    await connector.createSession();
-                    showQRCode(connector.uri);
+            if (!connector.connected) {
+                await connector.createSession();
+                const uri = connector.uri;
+                console.log(`Generated WalletConnect URI: ${uri}`);
+
+                // For MetaMask and Trust Wallet
+                let deepLink = '';
+                if (walletName === 'MetaMask') {
+                    deepLink = `metamask://wc?uri=${encodeURIComponent(uri)}`;
+                } else if (walletName === 'Trust Wallet') {
+                    deepLink = `trust://wc?uri=${encodeURIComponent(uri)}`;
                 }
 
-                connector.on("connect", (error, payload) => {
-                    if (error) {
-                        console.error('Error connecting WalletConnect:', error);
-                        return;
-                    }
-                    const { accounts, chainId } = payload.params[0];
-                    console.log(`Connected: ${accounts[0]} on chain ${chainId}`);
-                    alert(`Connected: ${accounts[0]} on chain ${chainId}`);
-                    document.getElementById('qrcode').style.display = 'none';
-                });
+                if (deepLink) {
+                    // Redirect to the wallet app with the WalletConnect URI
+                    window.location.href = deepLink;
+                }
 
-                connector.on("disconnect", (error, payload) => {
-                    if (error) {
-                        console.error('Error disconnecting WalletConnect:', error);
-                    } else {
-                        console.log('Disconnected');
-                    }
-                });
-            } catch (error) {
-                console.error('Failed to initialize WalletConnect:', error);
+                // Also display QR code as a fallback
+                showQRCode(uri);
             }
+
+            connector.on("connect", (error, payload) => {
+                if (error) {
+                    console.error('Error connecting WalletConnect:', error);
+                    return;
+                }
+                const { accounts, chainId } = payload.params[0];
+                console.log(`Connected: ${accounts[0]} on chain ${chainId}`);
+                alert(`Connected: ${accounts[0]} on chain ${chainId}`);
+                document.getElementById('qrcode').style.display = 'none';
+            });
+
+            connector.on("disconnect", (error) => {
+                if (error) {
+                    console.error('Error disconnecting WalletConnect:', error);
+                } else {
+                    console.log('Disconnected');
+                }
+            });
         }
 
         function showQRCode(uri) {
@@ -143,7 +158,9 @@
         }
 
         // Initialize WalletConnect when the page is fully loaded
-        window.addEventListener('load', initWalletConnect);
+        window.addEventListener('load', () => {
+            console.log('Page loaded. Ready for wallet connection.');
+        });
     </script>
 </body>
 </html>
