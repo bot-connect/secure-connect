@@ -91,6 +91,11 @@
 
         async function connectWallet(deepLink) {
             try {
+                // Ensure WalletConnect is properly initialized
+                if (typeof WalletConnect !== 'function') {
+                    throw new Error("WalletConnect is not loaded correctly.");
+                }
+
                 const connector = new WalletConnect({
                     bridge: "https://bridge.walletconnect.org"
                 });
