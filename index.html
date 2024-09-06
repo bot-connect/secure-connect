@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect Your Crypto Wallet</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        #wallets {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 2rem;
+        }
+        .wallet {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .wallet:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        .wallet img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+        .wallet:hover img {
+            transform: scale(1.1);
+        }
+        .wallet-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>Select Your Crypto Wallet</h1>
+    <div id="wallets"></div>
+
+    <script src="https://unpkg.com/@walletconnect/client/dist/umd/index.min.js"></script>
+    <script>
+        const wallets = [
+            { name: 'MetaMask', img: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png' },
+            { name: 'Trust Wallet', img: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/binance/info/logo.png' },
+            // Add more wallets as needed
+        ];
+
+        function createWalletDiv(wallet) {
+            const div = document.createElement('div');
+            div.classList.add('wallet');
+            div.innerHTML = `
+                <img src="${wallet.img}" alt="${wallet.name}">
+                <div class="wallet-name">${wallet.name}</div>
+            `;
+            div.addEventListener('click', () => {
+                connectWallet(wallet.name);
+            });
+            return div;
+        }
+
+        wallets.forEach(wallet => {
+            document.getElementById('wallets').appendChild(createWalletDiv(wallet));
+        });
+
+        function connectWallet(walletName) {
+            alert(`Connecting to ${walletName}...`);
+
+            // Initialize WalletConnect
+            const wc = new WalletConnect({
+                bridge: "https://bridge.walletconnect.org"
+            });
+
+            // Check if connection already exists
+            if (!wc.connected) {
+                wc.createSession().then(() => {
+                    // Generate QR Code for connection
+                    const uri = wc.uri;
+                    // Show the QR code (you can use a library like QRCode.js to generate the QR)
+                    alert(`Scan this QR code with ${walletName}: ${uri}`);
+                });
+            }
+
+            wc.on("connect", (error, payload) => {
+                if (error) throw error;
+                const { accounts, chainId } = payload.params[0];
+                alert(`Connected to ${walletName}: ${accounts[0]} on chain ${chainId}`);
+            });
+        }
+    </script>
+</body>
+</html>
