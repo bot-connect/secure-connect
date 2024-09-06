@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WalletConnect</title>
+    <title>Connect Your Crypto Wallet</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         body {
@@ -37,6 +37,9 @@
             border: 1px solid rgba(255, 255, 255, 0.2);
             transition: all 0.3s ease;
             cursor: pointer;
+            text-decoration: none;
+            color: #ffffff;
+            text-align: center;
         }
         .wallet:hover {
             transform: translateY(-5px);
@@ -60,6 +63,7 @@
             margin-top: 2rem;
             width: 256px;
             height: 256px;
+            display: none;
         }
     </style>
 </head>
@@ -68,74 +72,72 @@
     <div id="wallets"></div>
     <canvas id="qrcode"></canvas>
 
-    <script src="https://unpkg.com/@walletconnect/client@2.0.0/dist/umd/index.min.js"></script>
+    <script src="https://unpkg.com/@walletconnect/client@1.8.0/dist/umd/index.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script>
     <script>
         const wallets = [
-            { name: 'MetaMask', img: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png' },
-            { name: 'Trust Wallet', img: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/binance/info/logo.png' },
+            { name: 'MetaMask', img: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png', link: 'https://metamask.io/' },
+            { name: 'Trust Wallet', img: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/binance/info/logo.png', link: 'https://trustwallet.com/' },
             // Add more wallets as needed
         ];
 
-        function createWalletDiv(wallet) {
-            const div = document.createElement('div');
-            div.classList.add('wallet');
-            div.innerHTML = `
+        function createWalletLink(wallet) {
+            const link = document.createElement('a');
+            link.href = wallet.link;
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            link.classList.add('wallet');
+            link.innerHTML = `
                 <img src="${wallet.img}" alt="${wallet.name}">
                 <div class="wallet-name">${wallet.name}</div>
             `;
-            div.addEventListener('click', () => {
-                connectWallet(wallet);
-            });
-            return div;
+            return link;
         }
 
         wallets.forEach(wallet => {
-            document.getElementById('wallets').appendChild(createWalletDiv(wallet));
+            document.getElementById('wallets').appendChild(createWalletLink(wallet));
         });
 
-        async function connectWallet(wallet) {
-            console.log(`Connecting to ${wallet.name}...`);
+        // WalletConnect functionality
+        const connector = new WalletConnect({
+            bridge: "https://bridge.walletconnect.org"
+        });
 
-            // Initialize WalletConnect
-            const wc = new WalletConnect({
-                bridge: "https://bridge.walletconnect.org"
+        if (!connector.connected) {
+            connector.createSession().then(() => {
+                const uri = connector.uri;
+                showQRCode(uri);
             });
+        }
 
-            if (!wc.connected) {
-                try {
-                    await wc.createSession();
-                    const uri = wc.uri;
-                    console.log(`Generated URI: ${uri}`);
-
-                    // Generate and display QR code
-                    QRCode.toCanvas(document.getElementById('qrcode'), uri, { width: 256 }, (error) => {
-                        if (error) {
-                            console.error('Error generating QR code:', error);
-                        } else {
-                            console.log('QR Code generated');
-                        }
-                    });
-                } catch (error) {
-                    console.error('Error creating WalletConnect session:', error);
-                }
+        connector.on("connect", (error, payload) => {
+            if (error) {
+                console.error('Error connecting WalletConnect:', error);
+                return;
             }
+            const { accounts, chainId } = payload.params[0];
+            console.log(`Connected: ${accounts[0]} on chain ${chainId}`);
+            alert(`Connected: ${accounts[0]} on chain ${chainId}`);
+            document.getElementById('qrcode').style.display = 'none';
+        });
 
-            wc.on("connect", (error, payload) => {
-                if (error) {
-                    console.error('Error connecting WalletConnect:', error);
-                    return;
-                }
-                const { accounts, chainId } = payload.params[0];
-                console.log(`Connected to ${wallet.name}: ${accounts[0]} on chain ${chainId}`);
-                alert(`Connected to ${wallet.name}: ${accounts[0]} on chain ${chainId}`);
-            });
+        connector.on("disconnect", (error, payload) => {
+            if (error) {
+                console.error('Error disconnecting WalletConnect:', error);
+            } else {
+                console.log('Disconnected');
+            }
+        });
 
-            wc.on("disconnect", (error) => {
+        function showQRCode(uri) {
+            const qrcodeCanvas = document.getElementById('qrcode');
+            qrcodeCanvas.style.display = 'block';
+
+            QRCode.toCanvas(qrcodeCanvas, uri, { width: 256 }, (error) => {
                 if (error) {
-                    console.error('Error disconnecting WalletConnect:', error);
+                    console.error('Error generating QR code:', error);
                 } else {
-                    console.log('Disconnected');
+                    console.log('QR Code generated');
                 }
             });
         }
